@@ -1,0 +1,30 @@
+# Debug and test images
+debug_frame_*.bmp
+test_shot*.bmp
+test_live.bmp
+captured_*.bmp
+photo.bmp
+sample_*.bmp
+
+# Temp files
+~$*
+.DS_Store
+__pycache__/
+*.pyc
+
+# Old training data (v1)
+training_data/
+
+# Old model files
+model_weights/
+rps_model.keras
+rps_model.tflite
+
+# Old/intermediate scripts
+fix_model.py
+collect_data.py
+train_cnn.py
+train_cnn_esp.py
+train_cnn_v2.py
+socket_client.py
+inline comment files

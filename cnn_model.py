@@ -1,0 +1,107 @@
+import struct
+import math
+
+CLASSES = ["rock", "paper", "scissors"]
+
+def relu(x):
+    return max(0.0, x)
+
+def softmax(values):
+    max_val = max(values)
+    exp_vals = [math.exp(v - max_val) for v in values]
+    total = sum(exp_vals)
+    return [v / total for v in exp_vals]
+
+class TinyCNN:
+    def __init__(self):
+        print("Loading CNN model...")
+        self._load_weights()
+        print("Model loaded!")
+    
+    def _load_weights(self):
+        with open("model_esp32.bin", "rb") as f:
+            data = f.read()
+        offset = 0
+        def read_floats(n):
+            nonlocal offset
+            vals = struct.unpack_from("<" + "f" * n, data, offset)
+            offset += n * 4
+            return list(vals)
+        self.conv0_k = read_floats(3*3*1*12)
+        self.conv0_b = read_floats(12)
+        self.conv1_k = read_floats(3*3*12*12)
+        self.conv1_b = read_floats(12)
+        self.conv2_k = read_floats(3*3*12*12)
+        self.conv2_b = read_floats(12)
+        self.dense0_w = read_floats(192*24)
+        self.dense0_b = read_floats(24)
+        self.dense1_w = read_floats(24*3)
+        self.dense1_b = read_floats(3)
+
+    def conv2d(self, inp, in_h, in_w, in_ch, kernel, bias, out_ch):
+        out = [0.0] * (out_ch * in_h * in_w)
+        for oc in range(out_ch):
+            for y in range(in_h):
+                for x in range(in_w):
+                    val = bias[oc]
+                    for ky in range(3):
+                        for kx in range(3):
+                            iy = y + ky - 1
+                            ix = x + kx - 1
+                            if 0 <= iy < in_h and 0 <= ix < in_w:
+                                for ic in range(in_ch):
+                                    k_idx = ((ky * 3 + kx) * in_ch + ic) * out_ch + oc
+                                    p_idx = (iy * in_w + ix) * in_ch + ic
+                                    val += inp[p_idx] * kernel[k_idx]
+                    idx = (y * in_w + x) * out_ch + oc
+                    out[idx] = relu(val)
+        return out
+
+    def maxpool2d(self, inp, in_h, in_w, channels):
+        out_h = in_h // 2
+        out_w = in_w // 2
+        out = [0.0] * (out_h * out_w * channels)
+        for y in range(out_h):
+            for x in range(out_w):
+                for c in range(channels):
+                    max_val = -999999.0
+                    for dy in range(2):
+                        for dx in range(2):
+                            iy = y * 2 + dy
+                            ix = x * 2 + dx
+                            idx = (iy * in_w + ix) * channels + c
+                            if inp[idx] > max_val:
+                                max_val = inp[idx]
+                    out_idx = (y * out_w + x) * channels + c
+                    out[out_idx] = max_val
+        return out
+
+    def dense(self, inp, weights, bias, in_size, out_size, use_relu=True):
+        out = []
+        for o in range(out_size):
+            val = bias[o]
+            for i in range(in_size):
+                val += inp[i] * weights[i * out_size + o]
+            if use_relu:
+                val = relu(val)
+            out.append(val)
+        return out
+
+    def predict(self, pixels):
+        x = list(pixels)
+        x = self.conv2d(x, 32, 32, 1, self.conv0_k, self.conv0_b, 12)
+        x = self.maxpool2d(x, 32, 32, 12)
+        x = self.conv2d(x, 16, 16, 12, self.conv1_k, self.conv1_b, 12)
+        x = self.maxpool2d(x, 16, 16, 12)
+        x = self.conv2d(x, 8, 8, 12, self.conv2_k, self.conv2_b, 12)
+        x = self.maxpool2d(x, 8, 8, 12)
+        x = self.dense(x, self.dense0_w, self.dense0_b, 192, 24, use_relu=True)
+        x = self.dense(x, self.dense1_w, self.dense1_b, 24, 3, use_relu=False)
+        probs = softmax(x)
+        best_idx = 0
+        best_val = probs[0]
+        for i in range(1, 3):
+            if probs[i] > best_val:
+                best_val = probs[i]
+                best_idx = i
+        return CLASSES[best_idx], best_val, probs
