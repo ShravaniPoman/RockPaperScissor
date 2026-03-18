@@ -9,7 +9,7 @@
 #       For real-time use, classify_laptop.py is faster since TensorFlow runs on the laptop.
 #
 # Author: Shravani Poman (with assistance from Claude AI)
-# Course: AI for Engineers, Spring 2026
+
 
 from camera import Camera, GrabMode, PixelFormat, FrameSize, GainCeiling
 from image_preprocessing import resize_96x96_to_32x32_and_threshold  # SEEED Studio
