@@ -1,7 +1,7 @@
-# npy_to_bmp.py — Runs on your LAPTOP
+# npy_to_bmp.py — Runs on my LAPTOP
 # Converts all .npy training images to viewable BMP files
 # Creates rock_bmp/, paper_bmp/, scissors_bmp/ folders
-#
+# Author: Shravani Poman (with assistance from Claude AI)
 # Usage: python3 npy_to_bmp.py
 
 import os
